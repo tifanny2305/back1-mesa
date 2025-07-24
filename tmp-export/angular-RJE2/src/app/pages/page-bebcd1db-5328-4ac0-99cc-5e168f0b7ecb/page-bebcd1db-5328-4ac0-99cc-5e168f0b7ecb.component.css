@@ -1,0 +1,42 @@
+.c1 {
+  top: 20px; left: 50px; width: 200px; height: 30px; background-color: #f0f0f0; color: #000000; border: 1px solid #cccccc; border-radius: 4px; position: absolute; font-size: 20px; font-weight: bold; text-align: center; line-height: 30px;
+}
+
+.c2 {
+  top: 230px; left: 50px; width: 200px; height: 30px; background-color: #ffffff; color: #000000; border: 1px solid #cccccc; border-radius: 4px; position: absolute; font-size: 16px; text-align: left; padding-left: 10px;
+}
+
+
+/* Estilos para checklist */
+.checklist-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.checklist-input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.checklist-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Estilos base para tablas */
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+td {
+  box-sizing: border-box;
+  vertical-align: top;
+  padding: 8px;
+  word-wrap: break-word;
+}
+
+tr {
+  box-sizing: border-box;
+}

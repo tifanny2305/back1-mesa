@@ -1,0 +1,138 @@
+.c1 {
+  top: 72px; left: 109px; width: 300px; height: 500px; background-color: #f0f0f0; color: #000000; border: 1px solid #cccccc; border-radius: 4px; position: absolute; font-size: 16px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 40px;
+}
+
+.c2 {
+  top: 107px; left: 481px; width: 100px; height: 20px; background-color: transparent; color: #000000; position: absolute; font-size: 16px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 40px;
+}
+
+.c3 {
+  top: 224px; left: 395px; width: 120px; height: 40px; background-color: #4f46e5; color: #ffffff; border: none; border-radius: 6px; position: absolute; font-size: 14px; font-family: Arial, sans-serif; cursor: pointer; text-align: center; line-height: 40px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease; display: inline-block;
+}
+
+.c4 {
+  top: 175px; left: 563px; width: 160px; height: 40px; background-color: #ffffff; color: #000000; border: 1px solid #cccccc; border-radius: 4px; position: absolute; font-size: 14px; font-family: Arial, sans-serif;
+}
+
+.c5 {
+  
+}
+
+.c6 {
+  
+}
+
+.c7 {
+  
+}
+
+.c8 {
+  top: 333px; left: 450px; width: 220px; height: auto; position: absolute; background-color: #ffffff; padding: 10px; border: 1px solid #ccc; border-radius: 0px; font-family: Arial, sans-serif; font-size: 14px; line-height: 30px; text-align: left;
+}
+
+.c9 {
+  
+}
+
+.c10 {
+  
+}
+
+.c11 {
+  
+}
+
+.c12 {
+  top: 239px; left: 777px; width: 400px; height: auto; border: 1px solid #000; position: absolute; background-color: #ffffff;
+}
+
+.c13 {
+  
+}
+
+.c14 {
+  border: 1px solid #ccc;
+}
+
+.c15 {
+  border: 1px solid #ccc;
+}
+
+.c16 {
+  border: 1px solid #ccc;
+}
+
+.c17 {
+  
+}
+
+.c18 {
+  border: 1px solid #ccc;
+}
+
+.c19 {
+  border: 1px solid #ccc;
+}
+
+.c20 {
+  border: 1px solid #ccc;
+}
+
+.c22 {
+  border: 1px solid #ccc;
+}
+
+.c23 {
+  border: 1px solid #ccc;
+}
+
+.c24 {
+  border: 1px solid #ccc;
+}
+
+.c26 {
+  border: 1px solid #ccc;
+}
+
+.c27 {
+  border: 1px solid #ccc;
+}
+
+.c28 {
+  border: 1px solid #ccc;
+}
+
+
+/* Estilos para checklist */
+.checklist-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.checklist-input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.checklist-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Estilos base para tablas */
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+td {
+  box-sizing: border-box;
+  vertical-align: top;
+  padding: 8px;
+  word-wrap: break-word;
+}
+
+tr {
+  box-sizing: border-box;
+}

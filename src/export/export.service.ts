@@ -42,7 +42,13 @@ export class ExportService {
 
     let imports = '';
     let routes = `  { path: '', redirectTo: '${pages[0].name.toLowerCase().replace(/\s+/g, '-')}', pathMatch: 'full' },\n`;
-    let navbarLinks = '';
+
+    // Crear mapeo de páginas para redirección
+    const pageMapping = pages.map(page => ({
+      id: page.id,
+      name: page.name,
+      path: page.name.toLowerCase().replace(/\s+/g, '-')
+    }));
 
     for (const page of pages) {
       const pageFolder = path.join(pagesDir, `page-${page.id}`);
@@ -52,7 +58,8 @@ export class ExportService {
       const cssPath = path.join(pageFolder, `page-${page.id}.component.css`);
       const tsPath = path.join(pageFolder, `page-${page.id}.component.ts`);
 
-      const { html, css } = this.convertComponentsToHtmlAndCss(page.components);
+      const { html, css } = this.convertComponentsToHtmlAndCss(page.components, pageMapping);
+      
       await writeFileAsync(htmlPath, html);
       await writeFileAsync(cssPath, css);
       await writeFileAsync(tsPath, this.generateComponentTs(page.id));
@@ -60,24 +67,12 @@ export class ExportService {
       const normalizedPath = page.name.toLowerCase().replace(/\s+/g, '-');
       imports += `import { Page${this.normalizeId(page.id)}Component } from './pages/page-${page.id}/page-${page.id}.component';\n`;
       routes += `  { path: '${normalizedPath}', component: Page${this.normalizeId(page.id)}Component },\n`;
-      navbarLinks += `      <li><a routerLink="/${normalizedPath}" routerLinkActive="active">${page.name}</a></li>\n`;
     }
 
-    const navbarDir = path.join(roomExportPath, 'src', 'app', 'components', 'navbar');
-    await mkdirAsync(navbarDir, { recursive: true });
-
-    await writeFileAsync(
-      path.join(navbarDir, 'navbar.component.ts'),
-      this.generateNavbarTs()
-    );
-    await writeFileAsync(
-      path.join(navbarDir, 'navbar.component.html'),
-      this.generateNavbarHtml(navbarLinks, roomCode)
-    );
-    await writeFileAsync(
-      path.join(navbarDir, 'navbar.component.css'),
-      this.generateNavbarCss()
-    );
+    // ❌ ELIMINADO: Generación de navbar
+    // const navbarDir = path.join(roomExportPath, 'src', 'app', 'components', 'navbar');
+    // await mkdirAsync(navbarDir, { recursive: true });
+    // await writeFileAsync(...);
 
     const routesPath = path.join(roomExportPath, 'src', 'app', 'app.routes.ts');
     let routesContent = await readFileAsync(routesPath, 'utf8');
@@ -89,8 +84,9 @@ export class ExportService {
     );
     await writeFileAsync(routesPath, routesContent);
 
+    // ❌ ELIMINADO: Referencia al navbar en app.component.html
     const appComponentHtmlPath = path.join(roomExportPath, 'src', 'app', 'app.component.html');
-    await writeFileAsync(appComponentHtmlPath, `<app-navbar></app-navbar>\n<router-outlet></router-outlet>`);
+    await writeFileAsync(appComponentHtmlPath, `<router-outlet></router-outlet>`);
 
     const appComponentTsPath = path.join(roomExportPath, 'src', 'app', 'app.component.ts');
     await writeFileAsync(appComponentTsPath, this.generateAppComponentTs());
@@ -101,7 +97,7 @@ export class ExportService {
     return zipPath;
   }
 
-  private convertComponentsToHtmlAndCss(components: any[]): { html: string; css: string } {
+  private convertComponentsToHtmlAndCss(components: any[], pageMapping: any[]): { html: string; css: string } {
     let counter = 0;
     const cssMap = new Map<string, string>();
 
@@ -111,6 +107,7 @@ export class ExportService {
     const render = (comp: any): string => {
       const className = `c${++counter}`;
       const styleString = Object.entries(comp.style || {})
+        .filter(([key]) => !['redirectType', 'redirectValue', 'inputType'].includes(key))
         .map(([key, val]) => `${toKebabCase(key)}: ${val};`)
         .join(' ');
       cssMap.set(className, styleString);
@@ -119,171 +116,178 @@ export class ExportService {
       const content = comp.content || '';
       const children = (comp.children || []).map(render).join('');
 
-      return `<${tag} class="${className}">${content}${children}</${tag}>`;
+      switch (comp.type) {
+        case 'button':
+          let buttonContent = `<button class="${className}"`;
+          if (comp.style?.redirectType === 'page') {
+            const targetPage = pageMapping.find(p => p.id === comp.style.redirectValue);
+            if (targetPage) {
+              buttonContent += ` (click)="navigateToPage('${targetPage.path}')"`;
+            }
+          } else if (comp.style?.redirectType === 'url') {
+            buttonContent += ` (click)="openUrl('${comp.style.redirectValue}')"`;
+          }
+          buttonContent += `>${content}</button>`;
+          return buttonContent;
+
+        case 'checklist':
+          const inputType = comp.style?.inputType || 'checkbox';
+          const checklistItems = comp.children?.map((item: any, index: number) => {
+            const itemId = `${comp.id}_item_${index}`;
+            const isChecked = item.checked ? 'checked' : '';
+            const groupName = inputType === 'radio' ? `group_${comp.id}` : '';
+            
+            return `    <div class="checklist-item">
+      <input type="${inputType}" 
+             id="${itemId}" 
+             ${inputType === 'radio' ? `name="${groupName}"` : ''} 
+             ${isChecked}
+             class="checklist-input">
+      <label for="${itemId}" class="checklist-label">${item.content || ''}</label>
+    </div>`;
+          }).join('\n') || '';
+
+          return `<div class="${className}">
+${checklistItems}
+</div>`;
+
+        case 'select':
+          const options = comp.children?.map((option: any) => 
+            `    <option value="${option.content || ''}">${option.content || ''}</option>`
+          ).join('\n') || '';
+          return `<select class="${className}">
+${options}
+</select>`;
+
+        case 'table':
+          const tableRows = comp.children?.map((row: any) => {
+            // Generar clase para la fila
+            const rowClassName = `c${++counter}`;
+            const rowStyleString = Object.entries(row.style || {})
+              .map(([key, val]) => `${toKebabCase(key)}: ${val};`)
+              .join(' ');
+            if (rowStyleString) {
+              cssMap.set(rowClassName, rowStyleString);
+            }
+
+            const cells = row.children?.map((cell: any) => {
+              // Generar clase única para cada celda
+              const cellClassName = `c${++counter}`;
+              const cellStyleString = Object.entries(cell.style || {})
+                .map(([key, val]) => `${toKebabCase(key)}: ${val};`)
+                .join(' ');
+              
+              // Solo agregar CSS si hay estilos
+              if (cellStyleString) {
+                cssMap.set(cellClassName, cellStyleString);
+              }
+              
+              return `      <td class="${cellClassName}">${cell.content || ''}</td>`;
+            }).join('\n') || '';
+            
+            return `    <tr class="${rowClassName}">
+${cells}
+    </tr>`;
+          }).join('\n') || '';
+          
+          return `<table class="${className}">
+  <tbody>
+${tableRows}
+  </tbody>
+</table>`;
+
+        case 'label':
+          return `<label class="${className}">${content}</label>`;
+
+        default:
+          return `<${tag} class="${className}">${content}${children}</${tag}>`;
+      }
     };
 
     const html = `<div style="position: relative; width: 100%; height: 100vh;">
 ${components.map(render).join('\n')}
 </div>`;
+
+    // CSS adicional para checklist y tablas
+    const additionalCss = `
+/* Estilos para checklist */
+.checklist-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.checklist-input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.checklist-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Estilos base para tablas */
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+td {
+  box-sizing: border-box;
+  vertical-align: top;
+  padding: 8px;
+  word-wrap: break-word;
+}
+
+tr {
+  box-sizing: border-box;
+}`;
+
     const css = Array.from(cssMap.entries())
       .map(([cls, styles]) => `.${cls} {\n  ${styles}\n}`)
-      .join('\n\n');
+      .join('\n\n') + '\n\n' + additionalCss;
 
     return { html, css };
   }
 
   private generateComponentTs(pageId: string): string {
     return `import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-page-${pageId}',
   templateUrl: './page-${pageId}.component.html',
   styleUrls: ['./page-${pageId}.component.css']
 })
-export class Page${this.normalizeId(pageId)}Component {}`;
+export class Page${this.normalizeId(pageId)}Component {
+  
+  constructor(private router: Router) {}
+
+  navigateToPage(pagePath: string) {
+    this.router.navigate(['/' + pagePath]);
   }
 
-  private generateNavbarTs(): string {
-    return `import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
-
-@Component({
-  selector: 'app-navbar',
-  standalone: true,
-  imports: [RouterModule, CommonModule],
-  templateUrl: './navbar.component.html',
-  styleUrls: ['./navbar.component.css']
-})
-export class NavbarComponent {}`;
-  }
-
-  private generateNavbarHtml(links: string, roomCode: string): string {
-    return `<nav class="navbar">
-  <div class="navbar-container">
-    <a href="#" class="navbar-logo">
-      <span>${roomCode}</span>
-    </a>
-    <input type="checkbox" id="menu-toggle" class="menu-toggle">
-    <label for="menu-toggle" class="menu-icon">&#9776;</label>
-
-    <ul class="navbar-menu">
-${links}    </ul>
-  </div>
-</nav>`;
-  }
-
-  private generateNavbarCss(): string {
-    return `/* Reset básico */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 0.8rem 1.5rem;
-}
-
-.navbar-container {
-  max-width: 1200px;
-  margin: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-}
-
-.navbar-logo {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: #111827;
-  font-size: 1.6rem;
-  font-weight: 600;
-}
-
-.navbar-menu {
-  list-style: none;
-  display: flex;
-  gap: 2rem;
-}
-
-.navbar-menu li a {
-  text-decoration: none;
-  color: #374151;
-  padding: 0.5rem;
-  transition: all 0.3s ease;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.navbar-menu li a:hover {
-  background-color: #f3f4f6;
-  color: #2563eb;
-}
-
-.navbar-menu li a.active {
-  background-color: #2563eb;
-  color: #ffffff;
-}
-
-.menu-icon {
-  display: none;
-  font-size: 2rem;
-  cursor: pointer;
-}
-
-.menu-toggle {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .menu-icon {
-    display: block;
-  }
-
-  .navbar-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: #ffffff;
-    flex-direction: column;
-    align-items: center;
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.4s ease;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .menu-toggle:checked + .menu-icon + .navbar-menu {
-    max-height: 500px;
-  }
-
-  .navbar-menu li {
-    width: 100%;
-    text-align: center;
-    margin: 0.5rem 0;
+  openUrl(url: string) {
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 }`;
   }
 
+  // ❌ ELIMINADO: generateNavbarTs()
+  // ❌ ELIMINADO: generateNavbarHtml()
+  // ❌ ELIMINADO: generateNavbarCss()
+
   private generateAppComponentTs(): string {
     return `import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { NavbarComponent } from './components/navbar/navbar.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent],
+  imports: [RouterOutlet],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -309,4 +313,7 @@ export class AppComponent {
       archive.finalize();
     });
   }
+
+  
+
 }
